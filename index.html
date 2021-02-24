@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+<head>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="viewport"
+        content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height">
+    <title>GenPass</title>
+    <style>
+        input,
+        button {
+            width: 100%;
+            height: 4em;
+            display: block;
+            margin-bottom: 20px;
+        }
+        body {
+            margin: 40px 40px 40px 40px;
+        }
+    </style>
+</head>
+<body>
+    Main Password:
+    <input id="main" type="password">
+    Salt(website name):
+    <input id="salt">
+    <button onclick="gen()">Generate</button>
+    Result1:
+    <input id="result1"><button onclick="copy(1)">Copy</button>
+    Result2:
+    <input id="result2"><button onclick="copy(2)">Copy</button>
+    <script>
+        function $id(i){ return document.getElementById(i) }
+        function base64(u8) {
+            var binary = ''
+            var len = u8.length
+            for (var i = 0; i < len; i++) {
+                binary += String.fromCharCode(u8[i]);
+            }
+            return window.btoa(binary);
+        }
+        async function gen() {
+            let enc = new TextEncoder();
+            let key = await window.crypto.subtle.importKey(
+                "raw",
+                enc.encode($id('main').value),
+                "PBKDF2",
+                false,
+                ["deriveBits", "deriveKey"]
+            );
+            let derivedKey = await window.crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: enc.encode($id('salt').value),
+                    iterations: 10000,
+                    hash: 'SHA-256'
+                },
+                key,
+                {
+                    name: 'HMAC',
+                    hash: 'SHA-256'
+                },
+                true,
+                [ "sign", "verify" ])
+            let exportedKey = await window.crypto.subtle.exportKey('raw', derivedKey)
+            let base64EncodedKey = base64(new Uint8Array(exportedKey))
+            $id('result1').value = base64EncodedKey.substring(0, 16) + '!1'
+            $id('result2').value = base64EncodedKey.substring(16, 32) + '!2'
+        }
+        function copy(i) {
+            $id('result' + i).select()
+            document.execCommand('copy')
+        }
+    </script>
+</body>
+</html>
